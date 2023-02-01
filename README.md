@@ -43,11 +43,15 @@ To preprocess the data, run the following command:
 python ./models/preprocess.py --input_dir './public_data/DE-German/' --output_dir './preprocessed_data/' --lang 'de'
 ```
 
+See the sample files after preprocessing steps in the [`preprocessed_data`](./preprocessed_data/) folder.
+
 To train the model, run the following command:
 
 ```bash
 python  ./models/train.py --train './preprocessed_data/de-train.csv' --test './preprocessed_data/de-dev.csv' --output_dir './bart_de' --model 'bart'
 ```
+
+You can also access the monolingual English trained model at [here](https://drive.google.com/drive/folders/18FUAM1oUZp9-jXqGzBBeNzhrXyWdFJTF?usp=share_link) as an example of how model is saved.
 
 To inference the model and export the results, run the following command:
 
@@ -62,9 +66,7 @@ chmod +x run.sh
 ./run.sh
 ```
 
-You can also access the monolingual English trained model at [here](https://drive.google.com/drive/folders/18FUAM1oUZp9-jXqGzBBeNzhrXyWdFJTF?usp=share_link).
 ## Results
-
 
 We will update the results after the leaderboard is released.
 
