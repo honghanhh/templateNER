@@ -40,19 +40,19 @@ pip install -r requirements.txt
 To preprocess the data, run the following command:
 
 ```bash
-python preprocess.py --input_dir './public_data/DE-German/' --output_dir './preprocessed_data/' --lang 'de'
+python ./models/preprocess.py --input_dir './public_data/DE-German/' --output_dir './preprocessed_data/' --lang 'de'
 ```
 
 To train the model, run the following command:
 
 ```bash
-python train.py --train './preprocessed_data/de-train.csv' --test './preprocessed_data/de-dev.csv' --output_dir './bart_de' --model 'bart'
+python  ./models/train.py --train './preprocessed_data/de-train.csv' --test './preprocessed_data/de-dev.csv' --output_dir './bart_de' --model 'bart'
 ```
 
 To inference the model and export the results, run the following command:
 
 ```bash
-python inference.py --data_path './public_data/DE-German/de_test.conll' --word_max_length 4 --model 'mbart' --model_path './best_model/' --output_path './de.pred.conll'
+python  ./models/inference.py --data_path './public_data/DE-German/de_test.conll' --word_max_length 4 --model 'mbart' --model_path './best_model/' --output_path './de.pred.conll'
 ```
 
 If you are lazy to run theses 3 above commands, you can run the following command to end-to-end reproduce the results:
