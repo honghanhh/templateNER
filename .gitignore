@@ -4,8 +4,6 @@ __pycache__/
 *$py.class
 
 # Data folder
-./preprocessed_data/
-./public_data/
 
 # C extensions
 *.so
