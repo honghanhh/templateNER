@@ -1,20 +1,16 @@
-import json
 import logging
 import math
 import os
 import random
 import warnings
 from dataclasses import asdict
-from multiprocessing import Pool, cpu_count
-from pathlib import Path
+from multiprocessing import Pool
 
 import numpy as np
 import pandas as pd
 import torch
 from tensorboardX import SummaryWriter
-from torch.nn.utils.rnn import pad_sequence
-from torch.utils.data import DataLoader, Dataset, RandomSampler, SequentialSampler
-from torch.utils.data.distributed import DistributedSampler
+from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from tqdm.auto import tqdm, trange
 from transformers import (
     AdamW,
@@ -27,29 +23,9 @@ from transformers import (
     MBartForConditionalGeneration,
     BartTokenizer,
     MBart50Tokenizer,
-    T5Tokenizer,
-    T5ForConditionalGeneration,
-    BlenderbotConfig,
-    BlenderbotTokenizer,
-    BlenderbotForConditionalGeneration,
-    BlenderbotSmallConfig,
-    # BlenderbotSmallForConditionalGeneration,
-    BlenderbotSmallTokenizer,
-    T5Config,
-    BertConfig,
-    BertForMaskedLM,
-    BertModel,
-    BertTokenizer,
-    PreTrainedModel,
-    PreTrainedTokenizer,
-    RobertaConfig,
-    RobertaModel,
-    RobertaTokenizer,
     get_linear_schedule_with_warmup,
 )
 
-from simpletransformers.config.global_args import global_args
-# from modeling_blenderbot_small import BlenderbotSmallForConditionalGeneration
 from simpletransformers.config.model_args import Seq2SeqArgs
 from seq2seq_utils import Seq2SeqDataset, SimpleSummarizationDataset
 
@@ -65,12 +41,7 @@ logger = logging.getLogger(__name__)
 MODEL_CLASSES = {
     "auto": (AutoConfig, AutoModel, AutoTokenizer),
     "bart": (BartConfig, BartForConditionalGeneration, BartTokenizer),
-    "mbart": (MBartConfig, MBartForConditionalGeneration, MBart50Tokenizer),
-    "t5": (T5Config, T5Tokenizer, T5ForConditionalGeneration),
-    "bert": (BertConfig, BertModel, BertTokenizer),
-    "roberta": (RobertaConfig, RobertaModel, RobertaTokenizer),
-    # "blender": (BlenderbotSmallConfig, BlenderbotSmallForConditionalGeneration, BlenderbotSmallTokenizer),
-    "blender-large": (BlenderbotConfig, BlenderbotForConditionalGeneration, BlenderbotTokenizer)
+    "mbart": (MBartConfig, MBartForConditionalGeneration, MBart50Tokenizer)
 }
 
 
@@ -159,18 +130,16 @@ class Seq2SeqModel:
         if not use_cuda:
             self.args.fp16 = False
 
-        # config = EncoderDecoderConfig.from_encoder_decoder_configs(config, config)
+        
         if encoder_decoder_type:
-            config_class, model_class, tokenizer_class = MODEL_CLASSES[encoder_decoder_type]
+            _, model_class, tokenizer_class = MODEL_CLASSES[encoder_decoder_type]
         else:
-            config_class, model_class, tokenizer_class = MODEL_CLASSES[encoder_type]
+            _, model_class, tokenizer_class = MODEL_CLASSES[encoder_type]
 
-        if encoder_decoder_type in ["t5","mbart", "bart", "marian", "blender", "blender-large"]:
+        if encoder_decoder_type in ["mbart", "bart","marian"]:
             self.model = model_class.from_pretrained(encoder_decoder_name)
-            if encoder_decoder_type in ["t5","mbart", "bart", "blender", "blender-large"]:
+            if encoder_decoder_type in ["mbart", "bart","marian"]:
                 self.encoder_tokenizer = tokenizer_class.from_pretrained(encoder_decoder_name)
-                # self.encoder_tokenizer = tokenizer_class.from_pretrained(encoder_decoder_name, additional_special_tokens=['__defi__', '__sim__'])
-                # self.model.resize_token_embeddings(len(self.encoder_tokenizer))
             elif encoder_decoder_type == "marian":
                 if self.args.base_marian_model_name:
                     self.encoder_tokenizer = tokenizer_class.from_pretrained(self.args.base_marian_model_name)
@@ -180,7 +149,6 @@ class Seq2SeqModel:
             self.config = self.model.config
         else:
             if encoder_decoder_name:
-                # self.model = EncoderDecoderModel.from_pretrained(encoder_decoder_name)
                 self.model = EncoderDecoderModel.from_encoder_decoder_pretrained(
                     os.path.join(encoder_decoder_name, "encoder"), os.path.join(encoder_decoder_name, "decoder")
                 )
@@ -281,12 +249,6 @@ class Seq2SeqModel:
 
         self._save_model(self.args.output_dir, model=self.model)
 
-        # model_to_save = self.model.module if hasattr(self.model, "module") else self.model
-        # model_to_save.save_pretrained(output_dir)
-        # self.encoder_tokenizer.save_pretrained(output_dir)
-        # self.decoder_tokenizer.save_pretrained(output_dir)
-        # torch.save(self.args, os.path.join(output_dir, "training_args.bin"))
-
         if verbose:
             logger.info(" Training of {} model complete. Saved to {}.".format(self.args.model_name, output_dir))
 
@@ -374,7 +336,6 @@ class Seq2SeqModel:
         warmup_steps = math.ceil(t_total * args.warmup_ratio)
         args.warmup_steps = warmup_steps if args.warmup_steps == 0 else args.warmup_steps
 
-        # TODO: Use custom optimizer like with BertSum?
         optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
         # decay
         scheduler = get_linear_schedule_with_warmup(
@@ -707,9 +668,6 @@ class Seq2SeqModel:
         self.results.update(result)
 
         if self.args.evaluate_generated_text:
-            # to_predict = eval_data["input_text"].tolist()
-            # preds = self.predict(to_predict)
-            # result = self.compute_metrics(eval_data["target_text"].tolist(), preds, **kwargs)
             result = self.evaluate_decode(eval_dataset, output_dir, verbose=verbose, silent=silent, **kwargs)
             self.results.update(result)
 
@@ -742,7 +700,6 @@ class Seq2SeqModel:
         model.eval()
 
         for batch in tqdm(eval_dataloader, disable=args.silent or silent, desc="Running Evaluation"):
-            # batch = tuple(t.to(device) for t in batch)
 
             inputs = self._get_inputs_dict(batch)
             with torch.no_grad():
@@ -833,7 +790,7 @@ class Seq2SeqModel:
                 )["input_ids"]
             input_ids = input_ids.to(self.device)
 
-            if self.args.model_type in ["t5","mbart","bart", "marian", "blender", "blender-large"]:
+            if self.args.model_type in ["mbart","bart", "marian"]:
 
                 outputs = self.model.generate(
                     input_ids=input_ids,
@@ -920,7 +877,7 @@ class Seq2SeqModel:
                 )["input_ids"]
             input_ids = input_ids.to(self.device)
 
-            if self.args.model_type in ["t5","mbart", "bart", "marian", "blender", "blender-large"]:
+            if self.args.model_type in ["mbart", "bart", "marian"]:
                 outputs = self.model.generate(
                     input_ids=input_ids,
                     num_beams=self.args.num_beams,
@@ -1040,7 +997,7 @@ class Seq2SeqModel:
             CustomDataset = args.dataset_class
             return CustomDataset(encoder_tokenizer, decoder_tokenizer, args, data, mode)
         else:
-            if args.model_type in ["t5", "mbart", "bart", "marian", "blender", "blender-large"]:
+            if args.model_type in ["mbart", "bart", "marian"]:
                 return SimpleSummarizationDataset(encoder_tokenizer, self.args, data, mode)
             else:
                 return Seq2SeqDataset(encoder_tokenizer, decoder_tokenizer, self.args, data, mode,)
@@ -1072,11 +1029,11 @@ class Seq2SeqModel:
             model_to_save = model.module if hasattr(model, "module") else model
             self._save_model_args(output_dir)
 
-            if self.args.model_type in ["t5", "mbart","bart", "marian", "blender", "blender-large"]:
+            if self.args.model_type in ["mbart", "bart", "marian"]:
                 os.makedirs(os.path.join(output_dir), exist_ok=True)
                 model_to_save.save_pretrained(output_dir)
                 self.config.save_pretrained(output_dir)
-                if self.args.model_type in ["t5", "mbart","bart", "blender", "blender-large"]:
+                if self.args.model_type in ["mbart","bart","marian"]:
                     self.encoder_tokenizer.save_pretrained(output_dir)
             else:
                 os.makedirs(os.path.join(output_dir, "encoder"), exist_ok=True)
@@ -1127,7 +1084,7 @@ class Seq2SeqModel:
                 "decoder_input_ids": y_ids.to(device),
                 "lm_labels": lm_labels.to(device),
             }
-        elif self.args.model_type in ["t5", "blender","mbart", "bart", "blender-large"]:
+        elif self.args.model_type in ["mbart", "bart", "marian"]:
             pad_token_id = self.encoder_tokenizer.pad_token_id
             source_ids, source_mask, y = batch["source_ids"], batch["source_mask"], batch["target_ids"]
             y_ids = y[:, :-1].contiguous()
