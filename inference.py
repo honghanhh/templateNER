@@ -16,8 +16,8 @@ if __name__ == "__main__":
     parser.add_argument("-data_path", "--data_path", type=str, help='./public_data/DE-German/de_test.conll')
     parser.add_argument("-word_max_length", "--word_max_length", type=int, help = 4)
     parser.add_argument("-model", "--model", type=str, help='mbart')
-    parser.add_argument("-model_path", "--model_name", type=str, help='mbart')
-    parser.add_argument("-output_path", "--output_path", type=str, help='./de.pred.conll')
+    parser.add_argument("-model_path", "--model_path", type=str, help='./best_model/')
+    parser.add_argument("-output_clpath", "--output_path", type=str, help='./de.pred.conll')
 
     args = parser.parse_args()
 
