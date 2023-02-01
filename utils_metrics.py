@@ -1,5 +1,26 @@
 from collections import defaultdict
+import pandas as pd
 import numpy as np
+
+def read_conll(in_file, lowercase=False, max_example=None):
+    examples = []
+    with open(in_file) as f:
+        word, label = [], []
+        for line in f.readlines():
+            sp = line.strip().split(' ')
+            if len(sp) == 4:
+                if '-' not in sp[0]:
+                    word.append(sp[0]) #.lower() if lowercase else sp[1])
+                    label.append(sp[3])
+            elif len(word) > 0:
+                examples.append({'tokens': word, 'spans': label})
+                word, label = [], []
+                if (max_example is not None) and (len(examples) == max_example):
+                    break
+        if len(word) > 0:
+            examples.append({'tokens': word, 'spans': label})
+    df = pd.DataFrame(examples)
+    return df
 
 def get_entities(seq):
     """Gets entities from sequence.
